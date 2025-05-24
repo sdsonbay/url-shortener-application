@@ -97,3 +97,73 @@ User -> React -> Spring Boot -> Cloud Function -> Spring Boot -> PostgreSQL -> S
 - Ensure application.yaml in backend points to PostgreSQL VM’s IP: spring.datasource.url=jdbc:postgresql://<VM-IP>:5432/url_shortener_db
 
 ### 5. Cloud Functions
+
+- URL Shortener Function
+
+  ```js
+  const crypto = require('crypto');
+
+  exports.shortenUrl = (req, res) => {
+  const longUrl = req.body.url;
+
+  if (!longUrl) {
+    return res.status(400).json({ error: 'Missing "url" in request body' });
+  }
+
+  const hash = crypto.createHash('sha256').update(longUrl).digest();
+  const shortCode = hash.toString('base64url').substring(0, 8);
+
+    res.status(200).json({
+      longUrl: longUrl,
+      shortUrl: shortCode,
+    });
+  };
+  ```
+
+  ```json
+  {
+    "name": "shorten-url-function",
+    "version": "1.0.0",
+    "main": "index.js",
+    "dependencies": {}
+  }
+  ```
+
+  ```bash
+  gcloud functions deploy shortenUrl \
+  --runtime=nodejs20 \
+  --trigger-http \
+  --allow-unauthenticated
+  ```
+
+### 6. Locust Performance Testing
+
+- Create virtual environment
+
+  ```bash
+  python3 -m venv locust-env
+  source locust-env/bin/activate
+  pip install locust
+  ```
+
+- Run test
+
+  ```bash
+  locust -f locust/locustfile.py -H http://<backend-loadbalancer-ip>
+  ```
+
+- Visit http://localhost:8089 on terminal
+
+### Autoscaling
+
+- Check scaling using:
+
+  ```bash
+  kubectl get hpa
+  ```
+  
+- Check running pods using:
+
+  ```bash
+  kubectl get pods
+  ```
